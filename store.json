@@ -21,6 +21,16 @@
       "versions": [
         {
           "version": "1.1.0-beta.1",
+          "buildVersion": "159",
+          "date": "2026-11-17T20:02:56Z",
+          "localizedDescription": "Unsigned full build for AltStore/SideStore, built from 6a1f628cf488d755df2f1b061e13d1956738ef31.",
+          "downloadURL": "https://github.com/adadshah/NuvioMobile/releases/download/sideload-1.1.0-beta.1-5/nuvio-1.1.0-beta.1-full-release.ipa",
+          "size": 71024524,
+          "sha256": "087ed5b0f44f8528e632e54fc7e8e6939ea0c77886df0ace0bd6ba1ee708603c",
+          "minOSVersion": "16.1"
+        },
+        {
+          "version": "1.1.0-beta.1",
           "buildVersion": "158",
           "date": "2026-11-17T09:54:00Z",
           "localizedDescription": "Unsigned full build for AltStore/SideStore, built from 32f7f413d2175eaa1437872e0f6f0c05dafb5478.",
