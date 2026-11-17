@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -554,8 +555,14 @@ private fun MovieHeroBlock(
         modifier = modifier
             .fillMaxWidth()
             .padding(centeredVerticalBarPadding())
-            .height(140.dp)
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)),
+            // A fixed height here would fight with the inset padding below on devices with a
+            // tall top safe area (e.g. Dynamic Island): both compete for the same space, and the
+            // logo image or a wrapped two-line title can get clipped against the box's edge. A
+            // minimum height keeps the usual compact look while letting the box grow instead of
+            // clipping when it needs to.
+            .heightIn(min = 140.dp)
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (logoUrl != null && !logoLoadError) {
@@ -563,7 +570,7 @@ private fun MovieHeroBlock(
                 model = logoUrl,
                 contentDescription = title,
                 modifier = Modifier
-                    .height(80.dp)
+                    .heightIn(max = 80.dp)
                     .fillMaxWidth(0.85f),
                 contentScale = ContentScale.Fit,
                 onError = { logoLoadError = true },
@@ -573,6 +580,7 @@ private fun MovieHeroBlock(
                 text = title,
                 style = MaterialTheme.typography.displayLarge.copy(
                     fontSize = 28.sp,
+                    lineHeight = 32.sp,
                     fontWeight = FontWeight.Black,
                     letterSpacing = (-0.5).sp,
                 ),

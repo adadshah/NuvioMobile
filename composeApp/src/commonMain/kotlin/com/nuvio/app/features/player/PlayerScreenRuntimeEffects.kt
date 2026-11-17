@@ -877,6 +877,7 @@ private fun PlayerScreenRuntime.buildNowPlayingInfo(): PlayerNowPlayingInfo {
             seasonNumber = activeSeasonNumber,
             episodeNumber = activeEpisodeNumber,
             episodeTitle = activeEpisodeTitle,
+            contentId = playbackSession.videoId,
         ),
         artworkUrl = firstNonBlankUrl(poster, background),
     )
@@ -887,11 +888,12 @@ private fun buildNowPlayingSubtitle(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
+    contentId: String? = null,
 ): String? {
     if (!isEpisode) return null
 
     val episodeParts = buildList {
-        localizedSeasonEpisodeCode(seasonNumber, episodeNumber)?.let { add(it) }
+        localizedSeasonEpisodeCode(seasonNumber, episodeNumber, contentId)?.let { add(it) }
         episodeTitle?.takeIf { it.isNotBlank() }?.let { add(it) }
     }
 

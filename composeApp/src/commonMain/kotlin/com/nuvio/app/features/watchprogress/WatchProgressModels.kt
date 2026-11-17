@@ -279,6 +279,7 @@ internal fun WatchProgressEntry.toContinueWatchingItem(): ContinueWatchingItem {
             seasonNumber = normalizedEntry.seasonNumber,
             episodeNumber = normalizedEntry.episodeNumber,
             episodeTitle = normalizedEntry.episodeTitle,
+            contentId = normalizedEntry.videoId.ifBlank { normalizedEntry.parentMetaId },
         ),
         imageUrl = resolvedEpisodeThumbnail ?: resolvedBackground ?: resolvedPoster,
         logo = normalizedEntry.logo.nonBlankOrNull(),
@@ -339,6 +340,7 @@ internal fun WatchProgressEntry.toUpNextContinueWatchingItem(
             seasonNumber = nextEpisode.season,
             episodeNumber = nextEpisode.episode,
             episodeTitle = nextEpisode.title,
+            contentId = nextEpisode.id,
         ),
         imageUrl = resolvedNextEpisodeThumbnail
             ?: resolvedCurrentEpisodeThumbnail
@@ -371,8 +373,9 @@ internal fun buildContinueWatchingEpisodeSubtitle(
     seasonNumber: Int?,
     episodeNumber: Int?,
     episodeTitle: String?,
+    contentId: String? = null,
 ): String {
-    val episodeCode = localizedSeasonEpisodeCode(seasonNumber, episodeNumber)
+    val episodeCode = localizedSeasonEpisodeCode(seasonNumber, episodeNumber, contentId)
     val title = localizedEpisodeTitle(episodeTitle, episodeNumber)
     return listOfNotNull(episodeCode, title).joinToString(" • ")
 }

@@ -201,13 +201,13 @@ internal fun MetaDetails.seriesPrimaryAction(
     )?.toLegacySeriesPrimaryAction()
 
 internal fun MetaVideo.playLabel(): String =
-    playLabel(seasonNumber = season, episodeNumber = episode)
+    playLabel(seasonNumber = season, episodeNumber = episode, contentId = id)
 
 internal fun MetaVideo.upNextLabel(): String =
-    upNextLabel(seasonNumber = season, episodeNumber = episode)
+    upNextLabel(seasonNumber = season, episodeNumber = episode, contentId = id)
 
 internal fun WatchProgressEntry.resumeLabel(): String =
-    resumeLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber)
+    resumeLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber, contentId = videoId.ifBlank { parentMetaId })
 
 internal fun MetaVideo.isReleasedBy(todayIsoDate: String): Boolean =
     isReleasedBy(

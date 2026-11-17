@@ -82,8 +82,9 @@ fun localizedEpisodeTitle(episodeTitle: String?, episodeNumber: Int? = null): St
     }
 }
 
-fun localizedSeasonEpisodeCode(seasonNumber: Int?, episodeNumber: Int?): String? =
-    when {
+fun localizedSeasonEpisodeCode(seasonNumber: Int?, episodeNumber: Int?, contentId: String? = null): String? {
+    if (com.nuvio.app.core.content.AddonContentIds.hidesEpisodeCode(contentId)) return null
+    return when {
         seasonNumber != null && episodeNumber != null ->
             resourceString("S${seasonNumber} E${episodeNumber}") {
                 getString(Res.string.compose_player_episode_code_full, seasonNumber, episodeNumber)
@@ -94,9 +95,10 @@ fun localizedSeasonEpisodeCode(seasonNumber: Int?, episodeNumber: Int?): String?
             }
         else -> null
     }
+}
 
-fun localizedPlayLabel(seasonNumber: Int?, episodeNumber: Int?): String {
-    val episodeCode = localizedSeasonEpisodeCode(seasonNumber, episodeNumber)
+fun localizedPlayLabel(seasonNumber: Int?, episodeNumber: Int?, contentId: String? = null): String {
+    val episodeCode = localizedSeasonEpisodeCode(seasonNumber, episodeNumber, contentId)
     return if (episodeCode != null) {
         resourceString("Play $episodeCode") { getString(Res.string.action_play_episode, episodeCode) }
     } else {
@@ -104,8 +106,8 @@ fun localizedPlayLabel(seasonNumber: Int?, episodeNumber: Int?): String {
     }
 }
 
-fun localizedResumeLabel(seasonNumber: Int?, episodeNumber: Int?): String {
-    val episodeCode = localizedSeasonEpisodeCode(seasonNumber, episodeNumber)
+fun localizedResumeLabel(seasonNumber: Int?, episodeNumber: Int?, contentId: String? = null): String {
+    val episodeCode = localizedSeasonEpisodeCode(seasonNumber, episodeNumber, contentId)
     return if (episodeCode != null) {
         resourceString("Resume $episodeCode") { getString(Res.string.action_resume_episode, episodeCode) }
     } else {
@@ -113,8 +115,8 @@ fun localizedResumeLabel(seasonNumber: Int?, episodeNumber: Int?): String {
     }
 }
 
-fun localizedUpNextLabel(seasonNumber: Int?, episodeNumber: Int?): String =
-    if (seasonNumber != null && episodeNumber != null) {
+fun localizedUpNextLabel(seasonNumber: Int?, episodeNumber: Int?, contentId: String? = null): String =
+    if (seasonNumber != null && episodeNumber != null && !com.nuvio.app.core.content.AddonContentIds.hidesEpisodeCode(contentId)) {
         resourceString("Next Up • S${seasonNumber} E${episodeNumber}") {
             getString(Res.string.continue_watching_up_next_episode, seasonNumber, episodeNumber)
         }

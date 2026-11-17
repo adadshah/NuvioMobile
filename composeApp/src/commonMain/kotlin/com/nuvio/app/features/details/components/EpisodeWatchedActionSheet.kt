@@ -277,6 +277,7 @@ private fun EpisodeActionSheetHeader(
                 localizedSeasonEpisodeCode(
                     seasonNumber = episode.season,
                     episodeNumber = episode.episode,
+                    contentId = episode.id,
                 )?.let {
                     append(it)
                     append(" • ")

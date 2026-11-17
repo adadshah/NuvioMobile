@@ -79,6 +79,7 @@ import com.nuvio.app.features.details.SeasonViewMode
 import com.nuvio.app.features.details.SeasonViewModeStorage
 import com.nuvio.app.features.details.formatRuntimeFromMinutes
 import com.nuvio.app.features.details.groupedEpisodesForDisplay
+import com.nuvio.app.features.details.metaVideoSeasonEpisodeComparator
 import com.nuvio.app.features.details.preferredEpisodeNumberForSeason
 import com.nuvio.app.features.details.seasonSortKey
 import com.nuvio.app.features.watchprogress.WatchProgressEntry
@@ -143,7 +144,14 @@ fun DetailSeriesContent(
         if (meta.videos.isNotEmpty() && withSeasonOrEp.isEmpty()) {
             log.w { "All videos lack season/episode fields! First: ${meta.videos.first()}" }
         }
-        meta.groupedEpisodesForDisplay()
+        if (com.nuvio.app.core.content.AddonContentIds.hidesEpisodeCode(meta.id)) {
+            // YouTube channels number videos "season per upload year"; movie collections use a
+            // bare running order. Neither is a real season to pick between - keep the queue order
+            // (season, then episode) but show it as one continuous list, same as NuvioTV.
+            mapOf(1 to withSeasonOrEp.sortedWith(metaVideoSeasonEpisodeComparator))
+        } else {
+            meta.groupedEpisodesForDisplay()
+        }
     }
 
     if (groupedEpisodes.isEmpty()) {
@@ -206,7 +214,7 @@ fun DetailSeriesContent(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    if (seasons.size == 1) {
+                    if (seasons.size == 1 && !com.nuvio.app.core.content.AddonContentIds.hidesEpisodeCode(meta.id)) {
                         DetailSectionTitle(
                             title = if (meta.type != "series" && seasonForContent <= 0) {
                                 stringResource(Res.string.details_videos)
@@ -366,6 +374,9 @@ private fun SeriesSeasonSelector(
     onLongPress: ((Int) -> Unit)?,
 ) {
     if (seasons.size <= 1) return
+    // YouTube channels group by upload year, and movie collections by nothing at all; both use
+    // season numbers only to drive ordering, never a real "season" concept to show the viewer.
+    if (com.nuvio.app.core.content.AddonContentIds.hidesEpisodeCode(meta.id)) return
 
     var seasonViewMode by remember {
         mutableStateOf(SeasonViewModeStorage.load() ?: SeasonViewMode.Posters)
@@ -1107,6 +1118,7 @@ private fun EpisodeCodeBadge(
     backgroundAlpha: Float,
     modifier: Modifier = Modifier,
 ) {
+    if (text.isBlank()) return
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(radius))
@@ -1517,8 +1529,10 @@ private fun Int.label(): String =
 
 private fun MetaVideo.episodeBadge(): String =
     when {
+        com.nuvio.app.core.content.AddonContentIds.isYoutubeId(id) -> ""
+        com.nuvio.app.core.content.AddonContentIds.isCollectionId(id) && episode != null -> "FILM $episode"
         episode != null || season != null ->
-            localizedSeasonEpisodeCode(seasonNumber = season, episodeNumber = episode).orEmpty()
+            localizedSeasonEpisodeCode(seasonNumber = season, episodeNumber = episode, contentId = id).orEmpty()
         else -> runBlocking { getString(Res.string.details_episode_badge_file) }
     }
 

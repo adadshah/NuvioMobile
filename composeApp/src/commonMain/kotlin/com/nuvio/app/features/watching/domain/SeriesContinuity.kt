@@ -175,9 +175,9 @@ fun decideSeriesPrimaryAction(
     return playbackEpisode?.let { episode ->
         WatchingSeriesPrimaryAction(
             label = if (nextEpisode != null) {
-                upNextLabel(episode.seasonNumber, episode.episodeNumber)
+                upNextLabel(episode.seasonNumber, episode.episodeNumber, content.id)
             } else {
-                playLabel(episode.seasonNumber, episode.episodeNumber)
+                playLabel(episode.seasonNumber, episode.episodeNumber, content.id)
             },
             videoId = buildPlaybackVideoId(
                 content = content,
@@ -206,18 +206,18 @@ fun buildPlaybackVideoId(
         fallbackVideoId?.takeIf { it.isNotBlank() } ?: content.id
     }
 
-fun playLabel(seasonNumber: Int?, episodeNumber: Int?): String =
-    localizedPlayLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber)
+fun playLabel(seasonNumber: Int?, episodeNumber: Int?, contentId: String? = null): String =
+    localizedPlayLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber, contentId = contentId)
 
-fun upNextLabel(seasonNumber: Int?, episodeNumber: Int?): String =
-    localizedUpNextLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber)
+fun upNextLabel(seasonNumber: Int?, episodeNumber: Int?, contentId: String? = null): String =
+    localizedUpNextLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber, contentId = contentId)
 
-fun resumeLabel(seasonNumber: Int?, episodeNumber: Int?): String =
-    localizedResumeLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber)
+fun resumeLabel(seasonNumber: Int?, episodeNumber: Int?, contentId: String? = null): String =
+    localizedResumeLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber, contentId = contentId)
 
 private fun WatchingProgressRecord.toResumeAction(): WatchingSeriesPrimaryAction =
     WatchingSeriesPrimaryAction(
-        label = resumeLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber),
+        label = resumeLabel(seasonNumber = seasonNumber, episodeNumber = episodeNumber, contentId = content.id),
         videoId = videoId,
         seasonNumber = seasonNumber,
         episodeNumber = episodeNumber,

@@ -116,7 +116,7 @@ internal fun applyHomeShuffle(
             videoId = selected.id, seasonNumber = selected.season, episodeNumber = selected.episode,
             episodeTitle = selected.title, episodeThumbnail = selected.thumbnail,
             pauseDescription = selected.overview, imageUrl = selected.thumbnail ?: item.background ?: item.poster,
-            subtitle = buildContinueWatchingEpisodeSubtitle(selected.season, selected.episode, selected.title),
+            subtitle = buildContinueWatchingEpisodeSubtitle(selected.season, selected.episode, selected.title, selected.id),
             released = selected.released, shufflePlayback = true,
             isWatched = (selected.season to selected.episode) in watched ||
                 episodeProgress[selected.season to selected.episode]?.isEffectivelyCompleted == true,

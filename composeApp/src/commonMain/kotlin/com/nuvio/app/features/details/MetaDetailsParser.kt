@@ -59,6 +59,24 @@ internal object MetaDetailsParser {
             links = links,
             seasonPosters = meta.seasonPosters(videos),
             videos = videos,
+            youtubeBlockInfo = meta.youtubeBlockInfo(),
+        )
+    }
+
+    // The KidSafe/WatchFilter/AnimeFilter addon's "kidsafeYt" extra on YouTube items (account
+    // links only): where to send a block or subscribe request, and this channel's/video's id.
+    private fun JsonObject.youtubeBlockInfo(): YoutubeBlockInfo? {
+        val ky = this["kidsafeYt"] as? JsonObject ?: return null
+        val base = ky.string("base")?.takeIf { it.startsWith("https://") } ?: return null
+        return YoutubeBlockInfo(
+            base = base,
+            isChannel = ky.boolean("isChannel") == true,
+            channelId = ky.string("ch"),
+            channelName = ky.string("cn"),
+            channelThumb = ky.string("th") ?: ky.string("lg"),
+            subscribed = ky.boolean("sub") == true,
+            videoId = ky.string("v"),
+            videoTitle = ky.string("vt"),
         )
     }
 

@@ -19,10 +19,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.NotificationAdd
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -46,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.nuvio.app.core.ui.AppIconResource
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.backdropControlColor
+import com.nuvio.app.features.details.YoutubeBlockInfo
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_play
 import nuvio.composeapp.generated.resources.details_actions_menu_label
@@ -257,6 +262,11 @@ fun DetailActions(
     onWatchedClick: () -> Unit,
     onSaveClick: () -> Unit,
     onSaveLongClick: (() -> Unit)?,
+    youtubeBlockInfo: YoutubeBlockInfo? = null,
+    onOpenYoutubeChannel: (() -> Unit)? = null,
+    onToggleYoutubeSubscribe: (() -> Unit)? = null,
+    onBlockYoutubeChannel: (() -> Unit)? = null,
+    onBlockYoutubeVideo: (() -> Unit)? = null,
 ) {
     val shuffleAction = onShuffleClick?.let { onClick ->
         DetailSecondaryAction(
@@ -289,6 +299,51 @@ fun DetailActions(
                     onLongClick = onSaveLongClick,
                 ),
             )
+            // The KidSafe/WatchFilter/AnimeFilter addon's YouTube actions: a channel this
+            // video/show belongs to (navigate there), Subscribe on a channel page, and
+            // Block channel / Block video - all writing straight to the user's addon account.
+            if (youtubeBlockInfo != null) {
+                if (youtubeBlockInfo.isChannel) {
+                    if (onToggleYoutubeSubscribe != null) {
+                        add(
+                            DetailSecondaryAction(
+                                label = if (youtubeBlockInfo.subscribed) "Subscribed" else "Subscribe",
+                                icon = if (youtubeBlockInfo.subscribed) Icons.Default.NotificationsActive else Icons.Default.NotificationAdd,
+                                isActive = youtubeBlockInfo.subscribed,
+                                onClick = onToggleYoutubeSubscribe,
+                            ),
+                        )
+                    }
+                    if (onBlockYoutubeChannel != null) {
+                        add(
+                            DetailSecondaryAction(
+                                label = "Block channel",
+                                icon = Icons.Default.Block,
+                                onClick = onBlockYoutubeChannel,
+                            ),
+                        )
+                    }
+                } else {
+                    if (!youtubeBlockInfo.channelId.isNullOrBlank() && onOpenYoutubeChannel != null) {
+                        add(
+                            DetailSecondaryAction(
+                                label = youtubeBlockInfo.channelName?.let { "Channel: $it" } ?: "Channel",
+                                icon = Icons.Default.Person,
+                                onClick = onOpenYoutubeChannel,
+                            ),
+                        )
+                    }
+                    if (!youtubeBlockInfo.videoId.isNullOrBlank() && onBlockYoutubeVideo != null) {
+                        add(
+                            DetailSecondaryAction(
+                                label = "Block video",
+                                icon = Icons.Default.Block,
+                                onClick = onBlockYoutubeVideo,
+                            ),
+                        )
+                    }
+                }
+            }
         },
         isTablet = isTablet,
         onPlayClick = onPlayClick,

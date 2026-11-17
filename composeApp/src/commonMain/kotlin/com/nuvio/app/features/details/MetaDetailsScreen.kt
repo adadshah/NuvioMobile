@@ -690,10 +690,13 @@ fun MetaDetailsScreen(
                     meta.type,
                     metaScreenSettingsUiState.episodeCardStyle,
                 ) {
-                    if (metaScreenSettingsUiState.episodeCardStyle == MetaEpisodeCardStyle.List) {
-                        meta.groupedEpisodesForDisplay()
-                    } else {
+                    if (metaScreenSettingsUiState.episodeCardStyle != MetaEpisodeCardStyle.List) {
                         emptyMap()
+                    } else if (com.nuvio.app.core.content.AddonContentIds.hidesEpisodeCode(meta.id)) {
+                        mapOf(1 to meta.videos.filter { it.season != null || it.episode != null }
+                            .sortedWith(metaVideoSeasonEpisodeComparator))
+                    } else {
+                        meta.groupedEpisodesForDisplay()
                     }
                 }
                 val episodeListSeasons = remember(episodeListGroupedEpisodes) {
@@ -868,6 +871,74 @@ fun MetaDetailsScreen(
                         }
                     }
                 }
+                // The KidSafe/WatchFilter/AnimeFilter addon's YouTube channel/block/subscribe
+                // actions (see YoutubeBlockInfo) - account-linked only, writing straight to the
+                // user's addon account over the same endpoints NuvioTV's detail screen uses.
+                val youtubeBlockInfo = meta.youtubeBlockInfo
+                val onOpenYoutubeChannel: (() -> Unit)? = youtubeBlockInfo
+                    ?.takeIf { !it.channelId.isNullOrBlank() }
+                    ?.let { info ->
+                        {
+                            onOpenMeta?.invoke(
+                                MetaPreview(
+                                    id = meta.id.replaceAfter("yt:", info.channelId!!),
+                                    type = "series",
+                                    name = info.channelName ?: info.channelId!!,
+                                    poster = info.channelThumb,
+                                ),
+                            )
+                        }
+                    }
+                val onToggleYoutubeSubscribe: (() -> Unit)? = youtubeBlockInfo
+                    ?.takeIf { it.isChannel }
+                    ?.let { info ->
+                        {
+                            if (info.subscribed) {
+                                NuvioToastController.show("Already in YouTube Interests. Remove it on the setup page.")
+                            } else {
+                                detailsScope.launch {
+                                    when (val result = YoutubeBlockActions.subscribe(info)) {
+                                        is YoutubeBlockActions.Result.Ok ->
+                                            NuvioToastController.show("Added to YouTube Interests.")
+                                        is YoutubeBlockActions.Result.Failed ->
+                                            NuvioToastController.show(result.message)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                val onBlockYoutubeChannel: (() -> Unit)? = youtubeBlockInfo
+                    ?.takeIf { it.isChannel }
+                    ?.let { info ->
+                        {
+                            detailsScope.launch {
+                                when (val result = YoutubeBlockActions.blockChannel(info)) {
+                                    is YoutubeBlockActions.Result.Ok -> {
+                                        NuvioToastController.show("Channel blocked. Undo it on the setup page.")
+                                        onBack()
+                                    }
+                                    is YoutubeBlockActions.Result.Failed ->
+                                        NuvioToastController.show(result.message)
+                                }
+                            }
+                        }
+                    }
+                val onBlockYoutubeVideo: (() -> Unit)? = youtubeBlockInfo
+                    ?.takeIf { !it.isChannel && !it.videoId.isNullOrBlank() }
+                    ?.let { info ->
+                        {
+                            detailsScope.launch {
+                                when (val result = YoutubeBlockActions.blockVideo(info)) {
+                                    is YoutubeBlockActions.Result.Ok -> {
+                                        NuvioToastController.show("Video blocked. Undo it on the setup page.")
+                                        onBack()
+                                    }
+                                    is YoutubeBlockActions.Result.Failed ->
+                                        NuvioToastController.show(result.message)
+                                }
+                            }
+                        }
+                    }
                 val manualPlayHandler = onPlayManually
                 val showManualPlayOption = manualPlayHandler != null && StreamAutoPlayPolicy.isEffectivelyEnabled(playerSettingsUiState)
                 val onPrimaryPlayLongClick: (() -> Unit)? = manualPlayHandler
@@ -1196,6 +1267,11 @@ fun MetaDetailsScreen(
                                                             onWatchedClick = toggleWatched,
                                                             onSaveClick = toggleSaved,
                                                             onSaveLongClick = openLibraryListPicker,
+                                                            youtubeBlockInfo = youtubeBlockInfo,
+                                                            onOpenYoutubeChannel = onOpenYoutubeChannel,
+                                                            onToggleYoutubeSubscribe = onToggleYoutubeSubscribe,
+                                                            onBlockYoutubeChannel = onBlockYoutubeChannel,
+                                                            onBlockYoutubeVideo = onBlockYoutubeVideo,
                                                         )
                                                     }
                                                 } else {
@@ -1243,6 +1319,11 @@ fun MetaDetailsScreen(
                                         isPrimaryPlayEnabled = isPrimaryPlayEnabled,
                                         isSaved = isSaved,
                                         isWatched = isWatched,
+                                        youtubeBlockInfo = youtubeBlockInfo,
+                                        onOpenYoutubeChannel = onOpenYoutubeChannel,
+                                        onToggleYoutubeSubscribe = onToggleYoutubeSubscribe,
+                                        onBlockYoutubeChannel = onBlockYoutubeChannel,
+                                        onBlockYoutubeVideo = onBlockYoutubeVideo,
                                         onPrimaryPlayClick = onPrimaryPlayClick,
                                         onShuffleClick = onShuffleClick,
                                         shuffleEnabled = shuffleSettings.enabled,
@@ -1705,7 +1786,9 @@ fun MetaDetailsScreen(
             NuvioPosterZoomActionOverlay(
                 imageUrl = zoomAnchor.imageUrl ?: selectedEpisode.thumbnail ?: meta.background ?: meta.poster,
                 title = selectedEpisode.title,
-                subtitle = localizedSeasonEpisodeCode(selectedEpisode.season, selectedEpisode.episode) ?: seasonLabel,
+                subtitle = localizedSeasonEpisodeCode(selectedEpisode.season, selectedEpisode.episode, selectedEpisode.id)
+                    ?: com.nuvio.app.core.content.AddonContentIds.contentKindLabel(selectedEpisode.id)
+                    ?: seasonLabel,
                 isWatched = isSelectedEpisodeWatched,
                 blurred = metaScreenSettingsUiState.blurUnwatchedEpisodes && !isSelectedEpisodeWatched,
                 depthSurface = NuvioCardDepthSurface.EpisodeCards,
@@ -1833,7 +1916,7 @@ fun MetaDetailsScreen(
             RatingSheet(
                 media = ratingMedia,
                 title = localizedEpisodeTitle(ratedEpisode.title, ratedEpisode.episode) ?: ratedEpisode.title,
-                subtitle = localizedSeasonEpisodeCode(ratedEpisode.season, ratedEpisode.episode),
+                subtitle = localizedSeasonEpisodeCode(ratedEpisode.season, ratedEpisode.episode, ratedEpisode.id),
                 state = ratingState,
                 onDismiss = { episodeToRate = null },
             )
@@ -1982,6 +2065,11 @@ private fun LazyListScope.configuredMetaSectionItems(
     isPrimaryPlayEnabled: Boolean,
     isSaved: Boolean,
     isWatched: Boolean,
+    youtubeBlockInfo: YoutubeBlockInfo? = null,
+    onOpenYoutubeChannel: (() -> Unit)? = null,
+    onToggleYoutubeSubscribe: (() -> Unit)? = null,
+    onBlockYoutubeChannel: (() -> Unit)? = null,
+    onBlockYoutubeVideo: (() -> Unit)? = null,
     onPrimaryPlayClick: () -> Unit,
     onShuffleClick: (() -> Unit)?,
     shuffleEnabled: Boolean,
@@ -2067,6 +2155,11 @@ private fun LazyListScope.configuredMetaSectionItems(
                     isPrimaryPlayEnabled = isPrimaryPlayEnabled,
                     isSaved = isSaved,
                     isWatched = isWatched,
+                    youtubeBlockInfo = youtubeBlockInfo,
+                    onOpenYoutubeChannel = onOpenYoutubeChannel,
+                    onToggleYoutubeSubscribe = onToggleYoutubeSubscribe,
+                    onBlockYoutubeChannel = onBlockYoutubeChannel,
+                    onBlockYoutubeVideo = onBlockYoutubeVideo,
                     onPrimaryPlayClick = onPrimaryPlayClick,
                     onShuffleClick = onShuffleClick,
                     shuffleEnabled = shuffleEnabled,
@@ -2296,6 +2389,11 @@ private fun ConfiguredMetaSections(
     isPrimaryPlayEnabled: Boolean,
     isSaved: Boolean,
     isWatched: Boolean,
+    youtubeBlockInfo: YoutubeBlockInfo? = null,
+    onOpenYoutubeChannel: (() -> Unit)? = null,
+    onToggleYoutubeSubscribe: (() -> Unit)? = null,
+    onBlockYoutubeChannel: (() -> Unit)? = null,
+    onBlockYoutubeVideo: (() -> Unit)? = null,
     onPrimaryPlayClick: () -> Unit,
     onShuffleClick: (() -> Unit)?,
     shuffleEnabled: Boolean,
@@ -2372,6 +2470,11 @@ private fun ConfiguredMetaSections(
                     onWatchedClick = onWatchedClick,
                     onSaveClick = onSaveClick,
                     onSaveLongClick = onSaveLongClick,
+                    youtubeBlockInfo = youtubeBlockInfo,
+                    onOpenYoutubeChannel = onOpenYoutubeChannel,
+                    onToggleYoutubeSubscribe = onToggleYoutubeSubscribe,
+                    onBlockYoutubeChannel = onBlockYoutubeChannel,
+                    onBlockYoutubeVideo = onBlockYoutubeVideo,
                 )
             }
             MetaScreenSectionKey.OVERVIEW -> {

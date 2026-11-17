@@ -173,7 +173,7 @@ internal fun EpisodeShuffleSheet(
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(stringResource(Res.string.shuffle_preview_title), style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary)
-                Text(localizedSeasonEpisodeCode(preview.season, preview.episode).orEmpty(),
+                Text(localizedSeasonEpisodeCode(preview.season, preview.episode, preview.id).orEmpty(),
                     style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(preview.title, style = MaterialTheme.typography.headlineSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 preview.overview?.takeIf { it.isNotBlank() }?.let {

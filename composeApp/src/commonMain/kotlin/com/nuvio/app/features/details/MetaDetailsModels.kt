@@ -40,6 +40,23 @@ data class MetaDetails(
     val links: List<MetaLink> = emptyList(),
     val seasonPosters: Map<Int, String> = emptyMap(),
     val videos: List<MetaVideo> = emptyList(),
+    val youtubeBlockInfo: YoutubeBlockInfo? = null,
+)
+
+/**
+ * What the KidSafe/WatchFilter/AnimeFilter addon puts on YouTube items (account links only) so
+ * the app can offer a channel button, Block channel/Block video, and Subscribe, writing straight
+ * back to the user's addon account. Mirrors NuvioTV's `meta.kidsafeYt`.
+ */
+data class YoutubeBlockInfo(
+    val base: String,
+    val isChannel: Boolean = false,
+    val channelId: String? = null,
+    val channelName: String? = null,
+    val channelThumb: String? = null,
+    val subscribed: Boolean = false,
+    val videoId: String? = null,
+    val videoTitle: String? = null,
 )
 
 enum class MoreLikeThisSource {
