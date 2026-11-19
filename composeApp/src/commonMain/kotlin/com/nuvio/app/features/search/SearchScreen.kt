@@ -163,7 +163,11 @@ fun SearchScreen(
             lastRequestedQuery = null
             SearchRepository.clear()
         } else {
-            delay(350)
+            // Long enough that ordinary typing — including the natural pause at each space —
+            // coalesces into one search per word/phrase instead of firing on every few
+            // keystrokes. Matches the debounce already raised to 3500ms on the TV app, for the
+            // same reason: each fired search can cost a real YouTube quota unit.
+            delay(3500)
             lastRequestedQuery = normalizedQuery
             SearchRepository.search(
                 query = normalizedQuery,
