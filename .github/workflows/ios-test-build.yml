@@ -67,6 +67,19 @@ jobs:
           else
             : > local.properties
           fi
+          # This iOS sideload build points at the self-hosted MOSEYO backend
+          # (https://moseyo-backend.kidsafe.workers.dev) instead of the
+          # official nuvio.tv one. This override is scoped to this workflow
+          # file only — it edits the decoded local.properties in-place here,
+          # after the shared NUVIO_LOCAL_PROPERTIES_BASE64 secret has been
+          # written out, so android-release.yml (which reads the same
+          # secret) is completely unaffected.
+          sed -i '' -E '/^[[:space:]]*(NUVIO_SUPABASE_URL|NUVIO_SUPABASE_ANON_KEY|NUVIO_SUPABASE_FALLBACK_URL)[[:space:]]*=/d' local.properties
+          {
+            echo "NUVIO_SUPABASE_URL=https://moseyo-backend.kidsafe.workers.dev"
+            echo "NUVIO_SUPABASE_ANON_KEY=sb_publishable_jiyuD2hOQV9wUIv22753ew_v9yvN9Cb"
+            echo "NUVIO_SUPABASE_FALLBACK_URL="
+          } >> local.properties
 
       - name: Prepare iOS dependencies
         run: ./scripts/prepare-ios-dependencies.sh
