@@ -2,7 +2,7 @@
   "name": "Moseyo",
   "subtitle": "A free, open-source media app for your phone, your desktop, and the TV you already own.",
   "description": "A free, open-source media app for your phone, your desktop, and the TV you already own.\n\nBring your own sources. Moseyo turns them into a library with artwork, ratings, subtitles, and your place saved on every screen.",
-  "website": "https://nuvio.tv",
+  "website": "https://github.com/adadshah/NuvioMobile",
   "iconURL": "https://raw.githubusercontent.com/adadshah/NuvioMobile/cmp-rewrite/iosApp/iosApp/Assets.xcassets/AppIcon.appiconset/app-icon-1024.png",
   "tintColor": "#f5a623",
   "featuredApps": [
