@@ -1322,7 +1322,7 @@ internal fun MainAppContent(
                 val cardVideoId = YoutubeContent.videoIdOf(meta.id)
                 val videos = details?.videos.orEmpty()
                 val video = videos.firstOrNull { cardVideoId != null && it.id.contains(cardVideoId) }
-                    ?: videos.sortedWith(compareBy({ it.season ?: 0 }, { it.episode ?: 0 })).firstOrNull()
+                    ?: videos.sortedWith(compareBy<com.nuvio.app.features.details.MetaVideo>({ it.season ?: 0 }, { it.episode ?: 0 })).firstOrNull()
                 if (details == null || video == null) {
                     navController.openPreview(meta)
                     return@launch
