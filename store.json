@@ -21,12 +21,12 @@
       "versions": [
         {
           "version": "1.1.0-beta.1",
-          "buildVersion": "159",
-          "date": "2026-11-23T19:00:50Z",
-          "localizedDescription": "Unsigned full build for AltStore/SideStore, built from 03d542887125ee10afc2fd03bb65d1569f4a1ab2.",
-          "downloadURL": "https://github.com/adadshah/NuvioMobile/releases/download/sideload-1.1.0-beta.1-10/nuvio-1.1.0-beta.1-full-release.ipa",
-          "size": 70701948,
-          "sha256": "250a0da1ac4d8e84a3add9ac365d1132f3c66218459d4761d12c21c079c1776c",
+          "buildVersion": "160",
+          "date": "2026-11-24T22:36:55Z",
+          "localizedDescription": "YouTube tab (channels as circles, YouTube Continue Watching, every YouTube row), tap-to-play for YouTube videos, and a hold menu with Play / Forget I searched this / Not interested / Block video. Built from f0bb51baceebed545cb5239a4bb697e17bf43fb1.\n",
+          "downloadURL": "https://github.com/adadshah/NuvioMobile/releases/download/sideload-1.1.0-beta.1-12/nuvio-1.1.0-beta.1-full-release.ipa",
+          "size": 70752637,
+          "sha256": "98e42ab3ba1d086ea0fef6d16ef1b59f0ccd0a84ab53f2124e3d77eef9479c4c",
           "minOSVersion": "16.1"
         },
         {
@@ -453,7 +453,7 @@
       "appPermissions": {
         "entitlements": [],
         "privacy": {
-          "NSLocalNetworkUsageDescription": "Nuvio connects to media servers on your local network."
+          "NSLocalNetworkUsageDescription": "Moseyo connects to media servers on your local network."
         }
       }
     }
