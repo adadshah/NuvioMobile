@@ -52,6 +52,7 @@ import com.nuvio.app.features.details.MetaVideo
 import com.nuvio.app.features.details.SeriesPrimaryAction
 import com.nuvio.app.features.details.seriesPrimaryAction
 import com.nuvio.app.features.home.components.HomeCatalogRowSection
+import com.nuvio.app.features.youtube.YoutubeContent
 import com.nuvio.app.features.home.components.HomeContinueWatchingSection
 import com.nuvio.app.features.home.components.HomeEmptyStateCard
 import com.nuvio.app.features.home.components.HomeHeroReservedSpace
@@ -549,12 +550,13 @@ fun HomeScreen(
     val shuffledContinueWatchingItems = remember(rawShuffledContinueWatchingItems, cwPosterPattern) {
         rawShuffledContinueWatchingItems.withCustomPosterUrls(cwPosterPattern)
     }
+    // YouTube videos have their own Continue Watching on the YouTube tab, not here.
     val (continueWatchingItems, upcomingItems) = remember(
         shuffledContinueWatchingItems,
         continueWatchingPreferences.sortMode,
     ) {
         splitUpcomingItems(
-            items = shuffledContinueWatchingItems,
+            items = shuffledContinueWatchingItems.filterNot { YoutubeContent.isYoutubeContinueWatching(it) },
             mode = continueWatchingPreferences.sortMode,
         )
     }
@@ -1188,7 +1190,8 @@ fun HomeScreen(
                             }
                         } else {
                             val section = sectionsMap[settingsItem.key]
-                            if (section != null && section.items.isNotEmpty()) {
+                            // YouTube rows live on the YouTube tab.
+                            if (section != null && section.items.isNotEmpty() && !YoutubeContent.isYoutubeSection(section)) {
                                 item(key = keyedSettingsItem.lazyKey, contentType = "catalog") {
                                     HomeCatalogRowSection(
                                         section = section,

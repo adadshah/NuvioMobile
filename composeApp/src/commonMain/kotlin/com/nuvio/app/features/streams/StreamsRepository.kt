@@ -98,7 +98,10 @@ object StreamsRepository {
         _uiState.value = StreamsUiState(requestToken = requestToken)
 
         PlayerSettingsRepository.ensureLoaded()
+        // YouTube videos (KidSafe / Watch Filter / Anime Filter) always play straight away, like
+        // the TV app: the first source, no sources list, whatever this profile's auto-play setting.
         val playerSettings = PlayerSettingsRepository.uiState.value
+            .forYoutubeDirectPlay(videoId, parentMetaId)
         val debridSettings = DebridSettingsRepository.snapshot()
         val streamBadgeRules = StreamBadgeSettingsRepository.snapshot()
         val autoPlayMode = playerSettings.streamAutoPlayMode

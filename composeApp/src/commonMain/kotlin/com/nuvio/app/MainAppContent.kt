@@ -110,6 +110,7 @@ import com.nuvio.app.features.downloads.DownloadsRepository
 import com.nuvio.app.features.home.HomeCatalogSection
 import com.nuvio.app.features.home.HomeCatalogSettingsRepository
 import com.nuvio.app.features.home.HomeRepository
+import com.nuvio.app.features.home.MetaPreview
 import com.nuvio.app.features.home.buildAddonCatalogRefreshSignature
 import com.nuvio.app.features.home.opensDetails
 import com.nuvio.app.features.home.components.shouldBlurContinueWatchingArtwork
@@ -193,6 +194,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.nuvio.app.features.youtube.YoutubeContent
 import nuvio.composeapp.generated.resources.*
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -262,6 +264,7 @@ internal fun MainAppContent(
         val searchListState = rememberLazyListState()
         val libraryScrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
         val settingsRootActionRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
+        val youtubeScrollToTopRequests = remember { MutableSharedFlow<Unit>(extraBufferCapacity = 1) }
         val currentRoute = navBackStack.lastOrNull() as? AppRoute
         LaunchedEffect(currentRoute, posterNavigationEnabled) {
             val request = posterNavigation.active
@@ -425,6 +428,7 @@ internal fun MainAppContent(
                 searchFocusRequestCount++
                 searchScrollToTopRequests.tryEmit(Unit)
             }
+            AppScreenTab.Youtube -> youtubeScrollToTopRequests.tryEmit(Unit)
             AppScreenTab.Library -> libraryScrollToTopRequests.tryEmit(Unit)
             AppScreenTab.Settings -> settingsRootActionRequests.tryEmit(Unit)
         }
@@ -1309,6 +1313,46 @@ internal fun MainAppContent(
             selectedContinueWatchingForActions = item
         }
 
+        // YouTube tab: a video card plays at once, like NuvioTV (no details page, no sources list).
+        // The card is a one-video (or playlist) show: play the video the card is about, resuming
+        // where it was left; if anything is missing, open its page instead.
+        val onYoutubeVideoClick: (MetaPreview) -> Unit = { meta ->
+            coroutineScope.launch {
+                val details = runCatching { MetaDetailsRepository.fetch(meta.type, meta.id) }.getOrNull()
+                val cardVideoId = YoutubeContent.videoIdOf(meta.id)
+                val videos = details?.videos.orEmpty()
+                val video = videos.firstOrNull { cardVideoId != null && it.id.contains(cardVideoId) }
+                    ?: videos.sortedWith(compareBy({ it.season ?: 0 }, { it.episode ?: 0 })).firstOrNull()
+                if (details == null || video == null) {
+                    navController.openPreview(meta)
+                    return@launch
+                }
+                val resume = WatchProgressRepository
+                    .progressForVideo(videoId = video.id, parentMetaId = details.id)
+                    ?.takeIf { it.isResumable }
+                    ?.toContinueWatchingItem()
+                launchPlaybackWithDownloadPreference(
+                    type = details.type,
+                    videoId = video.id,
+                    parentMetaId = details.id,
+                    parentMetaType = details.type,
+                    title = details.name,
+                    logo = details.logo,
+                    poster = details.poster ?: meta.poster,
+                    background = details.background ?: meta.banner,
+                    seasonNumber = video.season,
+                    episodeNumber = video.episode,
+                    episodeTitle = video.title,
+                    episodeThumbnail = video.thumbnail ?: meta.poster,
+                    pauseDescription = video.overview,
+                    resumePositionMs = resume?.resumePositionMs,
+                    resumeProgressFraction = resume?.resumeProgressFraction,
+                    manualSelection = false,
+                    startFromBeginning = false,
+                )
+            }
+        }
+
         AppUpdaterHost(
             controller = appUpdaterController,
             modifier = Modifier.fillMaxSize(),
@@ -1366,12 +1410,14 @@ internal fun MainAppContent(
                             searchScrollToTopRequests,
                             libraryScrollToTopRequests,
                             settingsRootActionRequests,
+                            youtubeScrollToTopRequests,
                         ) {
                             AppTabRequests(
                                 homeScrollToTopRequests = homeScrollToTopRequests,
                                 searchScrollToTopRequests = searchScrollToTopRequests,
                                 libraryScrollToTopRequests = libraryScrollToTopRequests,
                                 settingsRootActionRequests = settingsRootActionRequests,
+                                youtubeScrollToTopRequests = youtubeScrollToTopRequests,
                             )
                         },
                         state = remember(
@@ -1456,6 +1502,7 @@ internal fun MainAppContent(
                                 onDownloadsClick = { navController.navigate(DownloadsRoute(downloadsTitle)) },
                                 onContinueWatchingClick = onContinueWatchingClick,
                                 onContinueWatchingLongPress = onContinueWatchingLongPress,
+                                onYoutubeVideoClick = onYoutubeVideoClick,
                                 onSwitchProfile = onSwitchProfile,
                                 onSettingsPageClick = if (useNativeNavigation && !isTabletLayout) {
                                     { pageName, title ->

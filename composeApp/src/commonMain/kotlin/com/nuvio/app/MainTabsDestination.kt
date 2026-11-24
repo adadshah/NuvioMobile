@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -93,6 +94,12 @@ internal fun MainTabsDestination(
                 label = stringResource(Res.string.compose_nav_search),
             ),
             FloatingNavigationItem(
+                selected = selectedTab == AppScreenTab.Youtube,
+                onClick = { onTabSelected(AppScreenTab.Youtube) },
+                icon = Icons.Filled.SmartDisplay,
+                label = "YouTube",
+            ),
+            FloatingNavigationItem(
                 selected = selectedTab == AppScreenTab.Library,
                 onClick = { onTabSelected(AppScreenTab.Library) },
                 drawable = Res.drawable.sidebar_library,
@@ -135,6 +142,12 @@ internal fun MainTabsDestination(
                             onClick = { onTabSelected(AppScreenTab.Search) },
                             icon = Res.drawable.sidebar_search,
                             contentDescription = stringResource(Res.string.compose_nav_search),
+                        )
+                        NavItem(
+                            selected = selectedTab == AppScreenTab.Youtube,
+                            onClick = { onTabSelected(AppScreenTab.Youtube) },
+                            icon = Icons.Filled.SmartDisplay,
+                            contentDescription = "YouTube",
                         )
                         NavItem(
                             selected = selectedTab == AppScreenTab.Library,

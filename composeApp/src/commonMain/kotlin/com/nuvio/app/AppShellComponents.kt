@@ -37,10 +37,12 @@ import com.nuvio.app.features.profiles.ProfileBackgroundBackdrop
 import com.nuvio.app.features.search.SearchScreen
 import com.nuvio.app.features.settings.AppBrandWordmark
 import com.nuvio.app.features.settings.SettingsScreen
+import com.nuvio.app.features.youtube.YoutubeScreen
 import com.nuvio.app.features.watchprogress.ContinueWatchingItem
 import com.nuvio.app.navigation.AppRoute
 import com.nuvio.app.navigation.NuvioNavigator
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.app_brand_name
 import org.jetbrains.compose.resources.stringResource
@@ -81,6 +83,7 @@ internal data class AppTabRequests(
     val searchScrollToTopRequests: Flow<Unit>,
     val libraryScrollToTopRequests: Flow<Unit>,
     val settingsRootActionRequests: Flow<Unit>,
+    val youtubeScrollToTopRequests: Flow<Unit> = emptyFlow(),
 )
 
 internal data class AppTabActions(
@@ -95,6 +98,8 @@ internal data class AppTabActions(
     val onDownloadsClick: () -> Unit = {},
     val onContinueWatchingClick: ((ContinueWatchingItem) -> Unit)? = null,
     val onContinueWatchingLongPress: ((ContinueWatchingItem) -> Unit)? = null,
+    // YouTube tab: a video card plays straight away (falls back to its page).
+    val onYoutubeVideoClick: ((MetaPreview) -> Unit)? = null,
     val onSwitchProfile: (() -> Unit)? = null,
     val onSettingsPageClick: ((pageName: String, title: String) -> Unit)? = null,
     val onHomescreenSettingsClick: () -> Unit = {},
@@ -155,6 +160,19 @@ internal fun AppTabHost(
                     onPosterLongClick = actions.onPosterLongClick,
                     searchFocusRequestCount = state.searchFocusRequestCount,
                     scrollToTopRequests = requests.searchScrollToTopRequests,
+                )
+            }
+
+            AppScreenTab.Youtube -> {
+                YoutubeScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    scrollToTopRequests = requests.youtubeScrollToTopRequests,
+                    onCatalogClick = actions.onCatalogClick,
+                    onChannelClick = actions.onPosterClick,
+                    onVideoClick = actions.onYoutubeVideoClick ?: actions.onPosterClick,
+                    onContinueWatchingClick = actions.onContinueWatchingClick,
+                    onContinueWatchingLongPress = actions.onContinueWatchingLongPress,
+                    continueWatchingDisintegrationRequest = state.continueWatchingDisintegrationRequest,
                 )
             }
 

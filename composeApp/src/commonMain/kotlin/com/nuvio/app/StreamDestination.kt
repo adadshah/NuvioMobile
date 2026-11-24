@@ -44,6 +44,7 @@ import com.nuvio.app.features.streams.shouldShowAutoPlayLoading
 import com.nuvio.app.features.streams.shouldUseLandscapeAutoPlayLoading
 import com.nuvio.app.features.streams.StreamsUiState
 import com.nuvio.app.features.streams.YouTubeStreamResolver
+import com.nuvio.app.features.streams.forYoutubeDirectPlay
 import com.nuvio.app.features.watchprogress.WatchProgressRepository
 import com.nuvio.app.navigation.*
 import kotlinx.coroutines.CancellationException
@@ -416,14 +417,16 @@ internal fun StreamDestination(
         episode = launch.episodeNumber,
         manualSelection = launch.manualSelection,
     )
+    // YouTube: straight to the player, never the sources list (see forYoutubeDirectPlay).
+    val loadingSettings = playerSettings.forYoutubeDirectPlay(effectiveVideoId, launch.parentMetaId)
     val showLoadingScreen = autoPlayNavigationStarted || resolvingDebridStream || resolvingYouTubeStream || preparingServerStream || streamsUiState.shouldShowAutoPlayLoading(
         expectedRequestToken = expectedStreamsRequestToken,
-        settings = playerSettings,
+        settings = loadingSettings,
         manualSelection = launch.manualSelection,
     )
     val useLandscapeLoading = autoPlayNavigationStarted || streamsUiState.shouldUseLandscapeAutoPlayLoading(
         expectedRequestToken = expectedStreamsRequestToken,
-        settings = playerSettings,
+        settings = loadingSettings,
         manualSelection = launch.manualSelection,
     )
     SideEffect { onLandscapeLoadingChanged(useLandscapeLoading) }

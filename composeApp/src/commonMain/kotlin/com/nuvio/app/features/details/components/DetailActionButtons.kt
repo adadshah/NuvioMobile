@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.NotificationAdd
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -36,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +53,10 @@ import com.nuvio.app.core.ui.AppIconResource
 import com.nuvio.app.core.ui.appIconPainter
 import com.nuvio.app.core.ui.backdropControlColor
 import com.nuvio.app.features.details.YoutubeBlockInfo
+import com.nuvio.app.core.ui.NuvioToastController
+import com.nuvio.app.features.youtube.YoutubeHiddenVideos
+import com.nuvio.app.features.youtube.YoutubeVideoActions
+import kotlinx.coroutines.launch
 import nuvio.composeapp.generated.resources.Res
 import nuvio.composeapp.generated.resources.action_play
 import nuvio.composeapp.generated.resources.details_actions_menu_label
@@ -268,6 +274,7 @@ fun DetailActions(
     onBlockYoutubeChannel: (() -> Unit)? = null,
     onBlockYoutubeVideo: (() -> Unit)? = null,
 ) {
+    val youtubeActionScope = rememberCoroutineScope()
     val shuffleAction = onShuffleClick?.let { onClick ->
         DetailSecondaryAction(
             label = stringResource(if (shuffleEnabled) Res.string.shuffle_stop else Res.string.random_episode_title),
@@ -334,6 +341,27 @@ fun DetailActions(
                         )
                     }
                     if (!youtubeBlockInfo.videoId.isNullOrBlank() && onBlockYoutubeVideo != null) {
+                        // "Not interested": hides this video everywhere and counts against its
+                        // channel a little (same as NuvioTV's hold menu).
+                        val info = youtubeBlockInfo
+                        add(
+                            DetailSecondaryAction(
+                                label = "Not interested",
+                                icon = Icons.Default.ThumbDown,
+                                onClick = {
+                                    youtubeActionScope.launch {
+                                        val videoId = info.videoId.orEmpty()
+                                        when (val result = YoutubeVideoActions.notInterested(info.base, videoId, info.videoTitle)) {
+                                            YoutubeVideoActions.Result.Ok -> {
+                                                YoutubeHiddenVideos.hide(videoId)
+                                                NuvioToastController.show("Got it. You'll see less like this.")
+                                            }
+                                            is YoutubeVideoActions.Result.Failed -> NuvioToastController.show(result.message)
+                                        }
+                                    }
+                                },
+                            ),
+                        )
                         add(
                             DetailSecondaryAction(
                                 label = "Block video",

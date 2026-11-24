@@ -323,17 +323,20 @@ final class TabNavigationCoordinator: ObservableObject {
 enum NuvioAppTab: String, CaseIterable, Hashable {
     case home = "Home"
     case search = "Search"
+    case youtube = "Youtube"
     case library = "Library"
     case settings = "Settings"
 
     var fallbackTitle: String {
-        String(localized: String.LocalizationValue(rawValue))
+        if self == .youtube { return "YouTube" }
+        return String(localized: String.LocalizationValue(rawValue))
     }
 
     static func from(kotlinName: String?) -> NuvioAppTab? {
         switch kotlinName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "home": return .home
         case "search": return .search
+        case "youtube": return .youtube
         case "library": return .library
         case "settings", "profile": return .settings
         default: return nil
@@ -344,6 +347,7 @@ enum NuvioAppTab: String, CaseIterable, Hashable {
         switch self {
         case .home: return "NuvioTabHome"
         case .search: return "NuvioTabSearch"
+        case .youtube: return "NuvioTabYoutube"
         case .library: return "NuvioTabLibrary"
         case .settings: return "NuvioTabProfile"
         }
@@ -353,6 +357,7 @@ enum NuvioAppTab: String, CaseIterable, Hashable {
         switch self {
         case .home: return "house.fill"
         case .search: return "magnifyingglass"
+        case .youtube: return "play.rectangle.fill"
         case .library: return "rectangle.stack.fill"
         case .settings: return "person.crop.circle.fill"
         }
@@ -640,6 +645,7 @@ final class AppNavigationCoordinator: ObservableObject {
 
     let homeCoordinator = TabNavigationCoordinator()
     let searchCoordinator = TabNavigationCoordinator()
+    let youtubeCoordinator = TabNavigationCoordinator()
     let libraryCoordinator = TabNavigationCoordinator()
     let settingsCoordinator = TabNavigationCoordinator()
     let appGateController = AppGateController()
@@ -654,13 +660,14 @@ final class AppNavigationCoordinator: ObservableObject {
     }
 
     private var allCoordinators: [TabNavigationCoordinator] {
-        [homeCoordinator, searchCoordinator, libraryCoordinator, settingsCoordinator]
+        [homeCoordinator, searchCoordinator, youtubeCoordinator, libraryCoordinator, settingsCoordinator]
     }
 
     func coordinator(for tab: NuvioAppTab) -> TabNavigationCoordinator {
         switch tab {
         case .home: return homeCoordinator
         case .search: return searchCoordinator
+        case .youtube: return youtubeCoordinator
         case .library: return libraryCoordinator
         case .settings: return settingsCoordinator
         }
