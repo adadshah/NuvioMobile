@@ -20,6 +20,16 @@
       "category": "entertainment",
       "versions": [
         {
+          "version": "1.1.0-beta.2",
+          "buildVersion": "161",
+          "date": "2026-11-25T08:56:40Z",
+          "localizedDescription": "More videos panel for YouTube (Up next / More like this, tap plays straight away), Sources button moved to the expanded controls row, tap \"Resume from\" to replay the last source, YouTube toggle at the top of Search. Built from 4c29cc903b94404c919e789fae18563c86d7e70e.\n",
+          "downloadURL": "https://github.com/adadshah/NuvioMobile/releases/download/sideload-1.1.0-beta.2-13/nuvio-1.1.0-beta.2-full-release.ipa",
+          "size": 70816880,
+          "sha256": "3f04e7a868bcc33b9c903eddcb6510d9b5dc5c49d6b3558765b40ad19282b580",
+          "minOSVersion": "16.1"
+        },
+        {
           "version": "1.1.0-beta.1",
           "buildVersion": "160",
           "date": "2026-11-24T22:36:55Z",
