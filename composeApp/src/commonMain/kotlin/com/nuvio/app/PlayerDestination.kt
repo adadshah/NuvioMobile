@@ -28,6 +28,7 @@ internal fun PlayerDestination(
     launchExternalPlayer: (ExternalPlayerIntentResult.Success) -> Boolean,
     openExternalStreamUrl: (String) -> Boolean,
     onOpenPartyMedia: (PartyMedia) -> Unit,
+    onPlayYoutubeVideo: (PartyMedia) -> Unit = {},
 ) {
     val onBack = rememberGuardedPopBackStack(navController, route)
     val launch = remember(route.launchId) { PlayerLaunchStore.get(route.launchId) }
@@ -133,6 +134,7 @@ internal fun PlayerDestination(
             openExternalStreamUrl(url)
         },
         onOpenPartyMedia = onOpenPartyMedia,
+        onPlayYoutubeVideo = onPlayYoutubeVideo,
         modifier = Modifier.fillMaxSize(),
     )
 }

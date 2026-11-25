@@ -1072,6 +1072,31 @@ internal fun MainAppContent(
             )
         }
 
+        // More videos (player): the next YouTube video plays at once, in place of this one.
+        // YouTube always auto-plays its first source, so no sources list shows on the way.
+        fun openYoutubeVideo(media: PartyMedia) {
+            if (navController.currentRoute is PlayerRoute) navController.popBackStack()
+            launchPlaybackWithDownloadPreference(
+                type = media.type,
+                videoId = media.videoId ?: media.metaId,
+                parentMetaId = media.metaId,
+                parentMetaType = media.metaType,
+                title = media.title,
+                logo = null,
+                poster = media.poster,
+                background = media.background,
+                seasonNumber = media.season,
+                episodeNumber = media.episode,
+                episodeTitle = media.episodeTitle,
+                episodeThumbnail = media.poster,
+                pauseDescription = null,
+                resumePositionMs = null,
+                resumeProgressFraction = null,
+                manualSelection = false,
+                startFromBeginning = false,
+            )
+        }
+
         val onPlay: ContentPlayAction =
             { type, videoId, parentMetaId, parentMetaType, title, logo, poster, background, seasonNumber, episodeNumber, episodeTitle, episodeThumbnail, pauseDescription, resumePositionMs ->
                 launchPlaybackWithDownloadPreference(
@@ -1651,6 +1676,7 @@ internal fun MainAppContent(
                         launchExternalPlayer = launchExternalPlayer,
                         openExternalStreamUrl = ::openExternalStreamUrl,
                         onOpenPartyMedia = ::openPartyMedia,
+                        onPlayYoutubeVideo = ::openYoutubeVideo,
                     )
                 }
                 entry<CatalogRoute> { route ->

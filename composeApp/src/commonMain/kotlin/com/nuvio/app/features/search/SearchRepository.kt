@@ -69,6 +69,15 @@ object SearchRepository {
     private val _discoverUiState = MutableStateFlow(DiscoverUiState())
     val discoverUiState: StateFlow<DiscoverUiState> = _discoverUiState.asStateFlow()
 
+    // The YouTube toggle at the top of Search: on = YouTube only, off = movies and series only.
+    // Kept apart so typing a title never spends YouTube search quota by itself.
+    private val _youtubeOnly = MutableStateFlow(false)
+    val youtubeOnly: StateFlow<Boolean> = _youtubeOnly.asStateFlow()
+
+    fun setYoutubeOnly(enabled: Boolean) {
+        _youtubeOnly.value = enabled
+    }
+
     private var activeJob: Job? = null
     private var activeDiscoverJob: Job? = null
     private var lastRequestKey: String? = null
@@ -90,7 +99,8 @@ object SearchRepository {
         val hasPendingAddonManifests = enabledAddons.hasPendingEnabledManifests()
         val addonManifestErrorMessage = enabledAddons.firstEnabledManifestError()
         val activeAddons = enabledAddons.filter { it.manifest != null }
-        val serverSearches = ServerCatalog.searchTargets()
+        val youtubeOnly = _youtubeOnly.value
+        val serverSearches = if (youtubeOnly) emptyList() else ServerCatalog.searchTargets()
         if (activeAddons.isEmpty() && serverSearches.isEmpty()) {
             activeJob?.cancel()
             lastRequestKey = null
@@ -109,7 +119,7 @@ object SearchRepository {
         val requests = buildSearchRequests(
             addons = activeAddons,
             query = normalizedQuery,
-        )
+        ).filter { request -> request.catalogId.isYoutubeSearchCatalog() == youtubeOnly }
         if (requests.isEmpty() && serverSearches.isEmpty()) {
             activeJob?.cancel()
             lastRequestKey = null
@@ -122,6 +132,7 @@ object SearchRepository {
 
         val requestKey = buildString {
             append(normalizedQuery.lowercase())
+            append(if (youtubeOnly) "|yt" else "|titles")
             append('|')
             append(HomeCatalogSettingsRepository.snapshot().hideUnreleasedContent)
             append('|')
@@ -655,6 +666,9 @@ private data class SearchCatalogRequest(
     val query: String,
     val supportsPagination: Boolean,
 )
+
+/** The addons' YouTube search row (KidSafe / Watch Filter / Anime Filter: "kidsafe_search_yt"). */
+private fun String.isYoutubeSearchCatalog(): Boolean = endsWith("_search_yt")
 
 private fun AddonCatalog.supportsSearch(): Boolean =
     extra.any { property -> property.name == "search" } &&

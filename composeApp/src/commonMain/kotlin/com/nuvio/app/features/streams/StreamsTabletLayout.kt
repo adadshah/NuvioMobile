@@ -78,6 +78,7 @@ internal fun TabletStreamsLayout(
     onStreamLongPress: (StreamItem) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    onResumeClick: (() -> Unit)? = null,
 ) {
     val hazeState = rememberHazeState()
     val tabletBackdrop = remember(background, poster) {
@@ -204,6 +205,7 @@ internal fun TabletStreamsLayout(
                                     positionMs = resumePositionMs,
                                     progressFraction = resumeProgressFraction,
                                     modifier = Modifier.padding(bottom = 8.dp),
+                                    onClick = onResumeClick,
                                 )
                             }
 

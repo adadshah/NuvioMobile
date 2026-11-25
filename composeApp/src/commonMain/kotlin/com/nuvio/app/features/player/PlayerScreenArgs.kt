@@ -44,6 +44,8 @@ internal data class PlayerScreenArgs(
     val launchId: Long? = null,
     val sourceFilename: String? = null,
     val onOpenPartyMedia: (PartyMedia) -> Unit = {},
+    /** Plays another YouTube video right away (More videos panel), replacing this player. */
+    val onPlayYoutubeVideo: (PartyMedia) -> Unit = {},
     val stream: com.nuvio.app.features.streams.StreamItem? = null,
     val sourceFromLinkCache: Boolean = false,
     val sourceAutoSelected: Boolean = false,

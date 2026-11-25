@@ -708,7 +708,8 @@ internal fun StreamDestination(
             return
         }
         val sourceUrl = stream.playableDirectUrl ?: return
-        if (saveForReuse && playerSettings.streamReuseLastLinkEnabled && stream.serverTarget == null) {
+        // Always remembered (also with "reuse last link" off): the Resume button replays this source.
+        if (saveForReuse && stream.serverTarget == null) {
             val cacheKey = StreamLinkCacheRepository.contentKey(
                 type = launch.type,
                 videoId = effectiveVideoId,
@@ -856,6 +857,38 @@ internal fun StreamDestination(
                 },
                 onBack = onBack,
                 modifier = Modifier.fillMaxSize(),
+                onResumeLastSource = { resolvedResumePositionMs, resolvedResumeProgressFraction ->
+                    // The source picked last time for this title (same addon and stream name or
+                    // binge group), fresh from this load; else the first source.
+                    val cacheKey = StreamLinkCacheRepository.contentKey(
+                        type = launch.type,
+                        videoId = effectiveVideoId,
+                        parentMetaId = launch.parentMetaId,
+                        season = launch.seasonNumber,
+                        episode = launch.episodeNumber,
+                    )
+                    val last = StreamLinkCacheRepository.getValid(cacheKey, Long.MAX_VALUE)
+                    val available = StreamsRepository.uiState.value.groups.flatMap { it.streams }
+                    val pick = last?.let { previous ->
+                        available.firstOrNull { it.addonId == previous.addonId && it.name == previous.streamName }
+                            ?: available.firstOrNull {
+                                it.addonId == previous.addonId &&
+                                    !previous.bingeGroup.isNullOrBlank() &&
+                                    it.behaviorHints.bingeGroup == previous.bingeGroup
+                            }
+                    } ?: available.firstOrNull()
+                    if (pick == null) {
+                        NuvioToastController.show("Sources are still loading…")
+                    } else {
+                        openSelectedStream(
+                            stream = pick,
+                            resolvedResumePositionMs = resolvedResumePositionMs,
+                            resolvedResumeProgressFraction = resolvedResumeProgressFraction,
+                            forceExternal = false,
+                            forceInternal = false,
+                        )
+                    }
+                },
             )
         }
         pendingP2pStreamOpen?.let { pending ->

@@ -1,6 +1,9 @@
 package com.nuvio.app.features.search
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -130,6 +133,7 @@ fun SearchScreen(
     val watchedUiState by WatchedRepository.uiState.collectAsStateWithLifecycle()
     val fullyWatchedSeriesKeys by WatchedRepository.fullyWatchedSeriesKeys.collectAsStateWithLifecycle()
     val networkStatusUiState by NetworkStatusRepository.uiState.collectAsStateWithLifecycle()
+    val youtubeOnly by SearchRepository.youtubeOnly.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
     var lastRequestedQuery by rememberSaveable { mutableStateOf<String?>(null) }
     var observedOfflineState by remember { mutableStateOf(false) }
@@ -156,7 +160,7 @@ fun SearchScreen(
         SearchRepository.refreshDiscover(addonsUiState.addons)
     }
 
-    ScreenActivityEffect(query, addonRefreshKey, homeCatalogSettingsUiState.hideUnreleasedContent) { screenActive ->
+    ScreenActivityEffect(query, addonRefreshKey, homeCatalogSettingsUiState.hideUnreleasedContent, youtubeOnly) { screenActive ->
         if (!screenActive) return@ScreenActivityEffect
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) {
@@ -265,8 +269,16 @@ fun SearchScreen(
                 androidx.compose.foundation.layout.Column(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
+                    SearchYoutubeToggle(
+                        enabled = youtubeOnly,
+                        onToggle = {
+                            lastRequestedQuery = null
+                            SearchRepository.setYoutubeOnly(!youtubeOnly)
+                        },
+                        modifier = Modifier.padding(horizontal = 16.dp).padding(top = 4.dp),
+                    )
                     NuvioScreenHeader(
-                        title = headerTitle,
+                        title = if (youtubeOnly) "YouTube" else headerTitle,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                     androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(6.dp))
@@ -310,7 +322,16 @@ fun SearchScreen(
                     )
                 }
             }
-                discoverContent(
+                if (youtubeOnly) {
+                    item(key = "youtube_search_hint") {
+                        androidx.compose.material3.Text(
+                            text = "Searching YouTube only. Tap the YouTube logo to search movies and series.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
+                } else discoverContent(
                     state = discoverUiState,
                     isSourceLoading = addonManifestsLoading,
                     columns = discoverColumns,
@@ -531,5 +552,48 @@ internal fun SearchRecentRow(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/**
+ * The YouTube logo at the top of Search. Lit: searches YouTube only. Off: movies and series only
+ * (no YouTube quota spent).
+ */
+@Composable
+private fun SearchYoutubeToggle(
+    enabled: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val red = androidx.compose.ui.graphics.Color(0xFFFF0033)
+    val shape = RoundedCornerShape(20.dp)
+    androidx.compose.foundation.layout.Row(
+        modifier = modifier
+            .clip(shape)
+            .background(if (enabled) red.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .border(1.dp, if (enabled) red else androidx.compose.ui.graphics.Color.Transparent, shape)
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+    ) {
+        androidx.compose.foundation.Canvas(modifier = Modifier.size(width = 26.dp, height = 18.dp)) {
+            drawRoundRect(
+                color = if (enabled) red else androidx.compose.ui.graphics.Color.Gray,
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.height * 0.28f),
+            )
+            val path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(size.width * 0.40f, size.height * 0.28f)
+                lineTo(size.width * 0.66f, size.height * 0.50f)
+                lineTo(size.width * 0.40f, size.height * 0.72f)
+                close()
+            }
+            drawPath(path, androidx.compose.ui.graphics.Color.White)
+        }
+        androidx.compose.material3.Text(
+            text = if (enabled) "YouTube on" else "YouTube",
+            style = MaterialTheme.typography.labelLarge,
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

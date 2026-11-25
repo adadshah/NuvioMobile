@@ -130,6 +130,8 @@ fun StreamsScreen(
     ) -> Unit = { _, _, _, _ -> },
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    // Tapping "Resume from …": play again from the source chosen last time, without picking.
+    onResumeLastSource: ((resumePositionMs: Long?, resumeProgressFraction: Float?) -> Unit)? = null,
 ) {
     val useNativeNavigation = LocalUseNativeNavigation.current
     val uiState by StreamsRepository.uiState.collectAsStateWithLifecycle()
@@ -261,6 +263,9 @@ fun StreamsScreen(
                 },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
                 onRefresh = reloadStreams,
+                onResumeClick = onResumeLastSource?.let { resume ->
+                    { resume(effectiveResumePositionMs, effectiveResumeProgressFraction) }
+                },
             )
         } else {
             MobileStreamsLayout(
@@ -283,6 +288,9 @@ fun StreamsScreen(
                 },
                 onStreamLongPress = { stream -> streamActionsTarget = stream },
                 onRefresh = reloadStreams,
+                onResumeClick = onResumeLastSource?.let { resume ->
+                    { resume(effectiveResumePositionMs, effectiveResumeProgressFraction) }
+                },
             )
         }
 
@@ -428,6 +436,7 @@ private fun MobileStreamsLayout(
     onStreamLongPress: (StreamItem) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    onResumeClick: (() -> Unit)? = null,
 ) {
     val cinematic = backgroundMode == StreamBackgroundMode.Cinematic && heroArtwork != null
     Box(modifier = modifier.fillMaxSize()) {
@@ -463,6 +472,7 @@ private fun MobileStreamsLayout(
                         positionMs = resumePositionMs,
                         progressFraction = resumeProgressFraction,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                        onClick = onResumeClick,
                     )
                 }
                 ProviderFilterRow(
@@ -510,6 +520,7 @@ internal fun ResumeBanner(
     positionMs: Long?,
     progressFraction: Float? = null,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     val resumeText = when {
         progressFraction != null && progressFraction > 0f -> stringResource(
@@ -527,10 +538,11 @@ internal fun ResumeBanner(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
             .background(backdropControlColor(MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
         Text(
-            text = resumeText,
+            text = if (onClick != null) "▶  $resumeText" else resumeText,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = FontWeight.SemiBold,

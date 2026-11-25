@@ -625,6 +625,8 @@ private fun BoxScope.RenderPlaybackOverlays(
 
 @Composable
 private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
+    val isYoutubePlayback = com.nuvio.app.core.content.AddonContentIds.isYoutubeId(parentMetaId) ||
+        com.nuvio.app.core.content.AddonContentIds.isYoutubeId(activeVideoId)
     PlayerChaptersPanel(
         visible = showChaptersPanel && chapters.isNotEmpty(),
         chapters = chapters,
@@ -636,6 +638,34 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
             controlsVisible = true
         },
     )
+    if (isYoutubePlayback) {
+        PlayerYoutubeMoreVideosPanel(
+            visible = showEpisodesPanel,
+            currentVideoId = activeVideoId ?: parentMetaId,
+            providerAddonId = activeProviderAddonId,
+            positionMs = displayedPositionMs,
+            onPlay = { video ->
+                showEpisodesPanel = false
+                args.onPlayYoutubeVideo(
+                    com.nuvio.app.features.party.PartyMedia(
+                        type = "series",
+                        metaId = video.id,
+                        metaType = "series",
+                        videoId = video.id,
+                        season = 1,
+                        episode = 1,
+                        title = video.title,
+                        poster = video.thumbnail,
+                        background = video.background ?: video.thumbnail,
+                    ),
+                )
+            },
+            onDismiss = {
+                showEpisodesPanel = false
+                controlsVisible = true
+            },
+        )
+    }
     PlayerScreenModalHosts(
         pendingP2pSwitch = pendingP2pSwitch,
         onPendingP2pSwitchChanged = { pendingP2pSwitch = it },
@@ -763,7 +793,7 @@ private fun PlayerScreenRuntime.RenderPlayerModals(displayedPositionMs: Long) {
             PlayerStreamsRepository.stopSourcesLoading()
             controlsVisible = true
         },
-        isSeries = isSeries,
+        isSeries = isSeries && !isYoutubePlayback,
         showEpisodesPanel = showEpisodesPanel,
         allEpisodes = playerMetaVideos,
         parentMetaType = parentMetaType,

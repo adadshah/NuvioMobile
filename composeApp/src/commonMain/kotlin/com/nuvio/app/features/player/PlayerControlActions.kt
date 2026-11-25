@@ -261,12 +261,6 @@ internal fun playerControlActions(
                 icon = Icons.AutoMirrored.Rounded.Toc,
             )
         },
-        onSourcesClick?.let {
-            PlayerControlAction(
-                stringResource(Res.string.compose_player_sources), it,
-                painter = appIconPainter(AppIconResource.PlayerSource),
-            )
-        },
         onEpisodesClick?.let {
             PlayerControlAction(
                 stringResource(Res.string.compose_player_episodes), it,
@@ -295,6 +289,13 @@ internal fun playerControlActions(
             PlayerControlAction(
                 stringResource(Res.string.player_action_video_settings), it,
                 icon = Icons.Rounded.Build,
+            )
+        },
+        // Sources sit in the expanded row (after the wrench): picking a source is a deliberate step.
+        onSourcesClick?.let {
+            PlayerControlAction(
+                stringResource(Res.string.compose_player_sources), it,
+                painter = appIconPainter(AppIconResource.PlayerSource),
             )
         },
         onSubmitIntroClick?.let {
