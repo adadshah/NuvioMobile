@@ -1,0 +1,148 @@
+name: Moseyo Android (phone) build
+
+# Builds the Moseyo Android phone app from the same code as the iOS app
+# (same features, same version number from iosApp/Configuration/Version.xcconfig),
+# pointed at the self-hosted MOSEYO backend, and publishes the APKs as a
+# GitHub release. Manual only: Actions -> "Moseyo Android (phone) build" -> Run.
+#
+# One-time setup (Settings -> Secrets and variables -> Actions -> New secret):
+#   MOSEYO_ANDROID_KEYSTORE_BASE64   base64 of the signing keystore (.jks)
+#   MOSEYO_ANDROID_KEYSTORE_PASSWORD keystore password
+#   MOSEYO_ANDROID_KEY_ALIAS         key alias inside the keystore
+#   MOSEYO_ANDROID_KEY_PASSWORD      key password
+# Optional:
+#   MOSEYO_TMDB_API_KEY              built-in TMDB key (enrichment works without
+#                                    typing a key in Settings)
+# The same keystore must sign every build, or Android refuses the update.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a GitHub release (otherwise only a build artifact)
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: moseyo-android-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build signed Moseyo APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GRADLE_OPTS: -Dfile.encoding=UTF-8
+      RELEASE_PROPERTIES_BASE64: ${{ secrets.NUVIO_LOCAL_PROPERTIES_BASE64 }}
+      KEYSTORE_BASE64: ${{ secrets.MOSEYO_ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.MOSEYO_ANDROID_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.MOSEYO_ANDROID_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.MOSEYO_ANDROID_KEY_PASSWORD }}
+      TMDB_KEY: ${{ secrets.MOSEYO_TMDB_API_KEY }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Check signing secrets
+        run: |
+          missing=()
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [[ -n "${!name}" ]] || missing+=("MOSEYO_ANDROID_${name}")
+          done
+          if (( ${#missing[@]} > 0 )); then
+            echo "Missing signing secrets: ${missing[*]}" >&2
+            echo "Add them under Settings -> Secrets and variables -> Actions (see the top of this workflow file)." >&2
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Configure runtime properties
+        run: |
+          if [[ -n "${RELEASE_PROPERTIES_BASE64}" ]]; then
+            printf '%s' "${RELEASE_PROPERTIES_BASE64}" | base64 --decode > local.properties
+          else
+            : > local.properties
+          fi
+          # Same backend override as the iOS build: the self-hosted MOSEYO backend.
+          sed -i -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_STORE_FILE|NUVIO_RELEASE_STORE_PASSWORD|NUVIO_RELEASE_KEY_ALIAS|NUVIO_RELEASE_KEY_PASSWORD|NUVIO_SUPABASE_URL|NUVIO_SUPABASE_ANON_KEY|NUVIO_SUPABASE_FALLBACK_URL)[[:space:]]*=/d' local.properties
+          keystore_path="${RUNNER_TEMP}/moseyo-release.jks"
+          printf '%s' "${KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
+          {
+            echo ""
+            echo "NUVIO_SUPABASE_URL=https://moseyo-backend.kidsafe.workers.dev"
+            echo "NUVIO_SUPABASE_ANON_KEY=sb_publishable_jiyuD2hOQV9wUIv22753ew_v9yvN9Cb"
+            echo "NUVIO_SUPABASE_FALLBACK_URL="
+            echo "NUVIO_RELEASE_STORE_FILE=${keystore_path}"
+            echo "NUVIO_RELEASE_STORE_PASSWORD=${KEYSTORE_PASSWORD}"
+            echo "NUVIO_RELEASE_KEY_ALIAS=${KEY_ALIAS}"
+            echo "NUVIO_RELEASE_KEY_PASSWORD=${KEY_PASSWORD}"
+          } >> local.properties
+          if [[ -n "${TMDB_KEY}" ]]; then
+            sed -i -E '/^[[:space:]]*TMDB_API_KEY[[:space:]]*=/d' local.properties
+            echo "TMDB_API_KEY=${TMDB_KEY}" >> local.properties
+          fi
+
+      - name: Read version
+        id: version
+        run: |
+          name="$(sed -n -E 's/^MARKETING_VERSION[[:space:]]*=[[:space:]]*//p' iosApp/Configuration/Version.xcconfig | tr -d '[:space:]')"
+          code="$(sed -n -E 's/^CURRENT_PROJECT_VERSION[[:space:]]*=[[:space:]]*//p' iosApp/Configuration/Version.xcconfig | tr -d '[:space:]')"
+          echo "name=${name}" >> "${GITHUB_OUTPUT}"
+          echo "code=${code}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build full release APKs
+        run: ./gradlew :androidApp:assembleFullRelease -Pnuvio.app.versionName="${{ steps.version.outputs.name }}" --stacktrace
+
+      - name: Name the APKs
+        run: |
+          mkdir -p out
+          for apk in androidApp/build/outputs/apk/full/release/*.apk; do
+            abi="$(basename "${apk}" .apk | grep -oE '(arm64-v8a|armeabi-v7a|x86_64|x86)' || echo universal)"
+            cp "${apk}" "out/Moseyo-${{ steps.version.outputs.name }}-android-${abi}.apk"
+          done
+          ls -l out
+          {
+            echo "## Moseyo Android ${{ steps.version.outputs.name }} (build ${{ steps.version.outputs.code }})"
+            echo
+            echo "Most phones: the arm64-v8a APK."
+            echo
+            (cd out && sha256sum *.apk) | sed 's/^/    /'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: moseyo-android-${{ steps.version.outputs.name }}-${{ github.run_number }}
+          path: out/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish release
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.name }}
+          CODE: ${{ steps.version.outputs.code }}
+        run: |
+          tag="android-${VERSION}-b${CODE}"
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            tag="${tag}-r${GITHUB_RUN_NUMBER}"
+          fi
+          gh release create "${tag}" out/*.apk \
+            --target "${GITHUB_SHA}" \
+            --title "Moseyo for Android ${VERSION} (build ${CODE})" \
+            --notes "Moseyo for Android phones, same features as the iOS ${VERSION} build ${CODE}. Install the **arm64-v8a** APK on most phones. Built from ${GITHUB_SHA}."

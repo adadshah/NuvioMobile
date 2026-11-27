@@ -67,7 +67,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.nuvio.app"
+        // Moseyo: its own id, so it installs next to the official Nuvio app instead of over it.
+        applicationId = "com.moseyo.app"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = releaseAppVersionCode
@@ -157,15 +158,15 @@ android {
 
 androidComponents {
     onVariants(selector().withBuildType("debug")) { variant ->
-        variant.applicationId.set("com.nuviodebug.com")
+        variant.applicationId.set("com.moseyo.debug")
     }
     onVariants(selector().withBuildType("benchmark")) { variant ->
-        variant.applicationId.set("com.nuviodebug.com")
+        variant.applicationId.set("com.moseyo.debug")
     }
     onVariants { variant ->
         val buildType = variant.buildType.orEmpty()
         if (buildType.startsWith("nonMinified") || buildType.startsWith("benchmark") && buildType != "benchmark") {
-            variant.applicationId.set("com.nuviodebug.com")
+            variant.applicationId.set("com.moseyo.debug")
             variant.signingConfig.setConfig(android.signingConfigs.getByName("debug"))
         }
     }

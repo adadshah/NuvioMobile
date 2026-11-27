@@ -1,0 +1,103 @@
+name: Moseyo Android TV build
+
+# Builds Moseyo for Android TV / Google TV (moseyo-androidtv/): a full-screen
+# shell around the hosted Moseyo TV app - the same app the Hisense/LG TVs run,
+# so TV features arrive on every TV at once without a new APK.
+# Manual only: Actions -> "Moseyo Android TV build" -> Run.
+# Signed with the same MOSEYO_ANDROID_* secrets as the phone app
+# (see .github/workflows/moseyo-android.yml). Bump moseyo-androidtv/version.properties
+# before publishing a new release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a GitHub release (otherwise only a build artifact)
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: moseyo-androidtv-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build signed Moseyo Android TV APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      KEYSTORE_BASE64: ${{ secrets.MOSEYO_ANDROID_KEYSTORE_BASE64 }}
+      MOSEYO_KEYSTORE_PASSWORD: ${{ secrets.MOSEYO_ANDROID_KEYSTORE_PASSWORD }}
+      MOSEYO_KEY_ALIAS: ${{ secrets.MOSEYO_ANDROID_KEY_ALIAS }}
+      MOSEYO_KEY_PASSWORD: ${{ secrets.MOSEYO_ANDROID_KEY_PASSWORD }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up signing
+        run: |
+          if [[ -z "${KEYSTORE_BASE64}" || -z "${MOSEYO_KEYSTORE_PASSWORD}" || -z "${MOSEYO_KEY_ALIAS}" || -z "${MOSEYO_KEY_PASSWORD}" ]]; then
+            echo "Missing MOSEYO_ANDROID_* signing secrets (see .github/workflows/moseyo-android.yml)." >&2
+            exit 1
+          fi
+          printf '%s' "${KEYSTORE_BASE64}" | base64 --decode > "${RUNNER_TEMP}/moseyo-release.jks"
+          echo "MOSEYO_KEYSTORE_FILE=${RUNNER_TEMP}/moseyo-release.jks" >> "${GITHUB_ENV}"
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "9.4.1"
+
+      - name: Read version
+        id: version
+        run: |
+          echo "name=$(sed -n -E 's/^versionName=//p' moseyo-androidtv/version.properties | tr -d '[:space:]')" >> "${GITHUB_OUTPUT}"
+          echo "code=$(sed -n -E 's/^versionCode=//p' moseyo-androidtv/version.properties | tr -d '[:space:]')" >> "${GITHUB_OUTPUT}"
+
+      - name: Build release APK
+        run: gradle -p moseyo-androidtv :app:assembleRelease --stacktrace
+
+      - name: Name the APK
+        run: |
+          mkdir -p out
+          cp moseyo-androidtv/app/build/outputs/apk/release/app-release.apk "out/Moseyo-AndroidTV-${{ steps.version.outputs.name }}.apk"
+          {
+            echo "## Moseyo Android TV ${{ steps.version.outputs.name }} (build ${{ steps.version.outputs.code }})"
+            echo
+            (cd out && sha256sum *.apk) | sed 's/^/    /'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: moseyo-androidtv-${{ steps.version.outputs.name }}-${{ github.run_number }}
+          path: out/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish release
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.name }}
+          CODE: ${{ steps.version.outputs.code }}
+        run: |
+          tag="androidtv-${VERSION}-b${CODE}"
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            tag="${tag}-r${GITHUB_RUN_NUMBER}"
+          fi
+          gh release create "${tag}" out/*.apk \
+            --target "${GITHUB_SHA}" \
+            --title "Moseyo for Android TV / Google TV ${VERSION}" \
+            --notes "Moseyo for Android TV and Google TV. It runs the same Moseyo TV app as the Hisense/LG TVs, so new TV features arrive automatically (no reinstall). Built from ${GITHUB_SHA}."
