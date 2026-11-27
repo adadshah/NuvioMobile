@@ -1,0 +1,145 @@
+name: Moseyo Android TV (native) build
+
+# Builds the NEW native Android TV app (androidTvApp/, inside this repo) -
+# the same shared code the phone app uses (com.nuvio.app.MainActivity from
+# :composeApp: same networking, auth, catalogs and ExoPlayer pipeline),
+# packaged with a Leanback launcher banner. This replaces the old
+# moseyo-androidtv/ WebView shell (a separate project, built by
+# moseyo-androidtv.yml) which is left alone and still works until this is
+# proven out. Manual only: Actions -> "Moseyo Android TV (native) build" -> Run.
+#
+# Same signing secrets as the phone build (see moseyo-android.yml):
+#   MOSEYO_ANDROID_KEYSTORE_BASE64, MOSEYO_ANDROID_KEYSTORE_PASSWORD,
+#   MOSEYO_ANDROID_KEY_ALIAS, MOSEYO_ANDROID_KEY_PASSWORD
+# Keeps applicationId com.moseyo.tv (same as the old shell), so installing
+# this updates that app in place rather than needing a fresh install.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish a GitHub release (otherwise only a build artifact)
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: moseyo-androidtv-native-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build signed Moseyo Android TV APK (native)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GRADLE_OPTS: -Dfile.encoding=UTF-8
+      RELEASE_PROPERTIES_BASE64: ${{ secrets.NUVIO_LOCAL_PROPERTIES_BASE64 }}
+      KEYSTORE_BASE64: ${{ secrets.MOSEYO_ANDROID_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.MOSEYO_ANDROID_KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.MOSEYO_ANDROID_KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.MOSEYO_ANDROID_KEY_PASSWORD }}
+      TMDB_KEY: ${{ secrets.MOSEYO_TMDB_API_KEY }}
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Check signing secrets
+        run: |
+          missing=()
+          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            [[ -n "${!name}" ]] || missing+=("MOSEYO_ANDROID_${name}")
+          done
+          if (( ${#missing[@]} > 0 )); then
+            echo "Missing signing secrets: ${missing[*]}" >&2
+            echo "Add them under Settings -> Secrets and variables -> Actions (see moseyo-android.yml)." >&2
+            exit 1
+          fi
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Configure runtime properties
+        run: |
+          if [[ -n "${RELEASE_PROPERTIES_BASE64}" ]]; then
+            printf '%s' "${RELEASE_PROPERTIES_BASE64}" | base64 --decode > local.properties
+          else
+            : > local.properties
+          fi
+          # Same backend override as the phone/iOS builds: the self-hosted MOSEYO backend.
+          sed -i -E '/^[[:space:]]*(sdk\.dir|NUVIO_RELEASE_STORE_FILE|NUVIO_RELEASE_STORE_PASSWORD|NUVIO_RELEASE_KEY_ALIAS|NUVIO_RELEASE_KEY_PASSWORD|NUVIO_SUPABASE_URL|NUVIO_SUPABASE_ANON_KEY|NUVIO_SUPABASE_FALLBACK_URL)[[:space:]]*=/d' local.properties
+          keystore_path="${RUNNER_TEMP}/moseyo-release.jks"
+          printf '%s' "${KEYSTORE_BASE64}" | base64 --decode > "${keystore_path}"
+          {
+            echo ""
+            echo "NUVIO_SUPABASE_URL=https://moseyo-backend.kidsafe.workers.dev"
+            echo "NUVIO_SUPABASE_ANON_KEY=sb_publishable_jiyuD2hOQV9wUIv22753ew_v9yvN9Cb"
+            echo "NUVIO_SUPABASE_FALLBACK_URL="
+            echo "NUVIO_RELEASE_STORE_FILE=${keystore_path}"
+            echo "NUVIO_RELEASE_STORE_PASSWORD=${KEYSTORE_PASSWORD}"
+            echo "NUVIO_RELEASE_KEY_ALIAS=${KEY_ALIAS}"
+            echo "NUVIO_RELEASE_KEY_PASSWORD=${KEY_PASSWORD}"
+          } >> local.properties
+          if [[ -n "${TMDB_KEY}" ]]; then
+            sed -i -E '/^[[:space:]]*TMDB_API_KEY[[:space:]]*=/d' local.properties
+            echo "TMDB_API_KEY=${TMDB_KEY}" >> local.properties
+          fi
+
+      - name: Read version
+        id: version
+        run: |
+          name="$(sed -n -E 's/^MARKETING_VERSION[[:space:]]*=[[:space:]]*//p' iosApp/Configuration/Version.xcconfig | tr -d '[:space:]')"
+          code="$(sed -n -E 's/^CURRENT_PROJECT_VERSION[[:space:]]*=[[:space:]]*//p' iosApp/Configuration/Version.xcconfig | tr -d '[:space:]')"
+          echo "name=${name}" >> "${GITHUB_OUTPUT}"
+          echo "code=${code}" >> "${GITHUB_OUTPUT}"
+
+      - name: Build release APK
+        run: ./gradlew :androidTvApp:assembleRelease --stacktrace
+
+      - name: Name the APK
+        run: |
+          mkdir -p out
+          cp androidTvApp/build/outputs/apk/release/androidTvApp-release.apk "out/Moseyo-AndroidTV-native-${{ steps.version.outputs.name }}.apk"
+          {
+            echo "## Moseyo Android TV (native) ${{ steps.version.outputs.name }} (build ${{ steps.version.outputs.code }})"
+            echo
+            echo "Phase 1: real native app (same shared code as the phone app, including"
+            echo "its ExoPlayer pipeline) with a TV launcher banner - UI is still the"
+            echo "phone's touch layout for now, navigable with the remote's D-pad."
+            echo
+            (cd out && sha256sum *.apk) | sed 's/^/    /'
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: moseyo-androidtv-native-${{ steps.version.outputs.name }}-${{ github.run_number }}
+          path: out/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish release
+        if: inputs.publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.name }}
+          CODE: ${{ steps.version.outputs.code }}
+        run: |
+          tag="androidtv-native-${VERSION}-b${CODE}"
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            tag="${tag}-r${GITHUB_RUN_NUMBER}"
+          fi
+          gh release create "${tag}" out/*.apk \
+            --target "${GITHUB_SHA}" \
+            --title "Moseyo for Android TV (native, early) ${VERSION}" \
+            --notes "Early native Android TV build - real app, not a WebView, but TV-specific UI isn't built yet. Built from ${GITHUB_SHA}."
