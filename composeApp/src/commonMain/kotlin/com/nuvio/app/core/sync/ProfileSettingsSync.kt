@@ -254,14 +254,10 @@ object ProfileSettingsSync {
                     PROFILE_DEBRID_SETTINGS_FEATURE,
                     DebridSettingsStorage.exportToSyncPayload(),
                 ),
-                tmdbSettings = withoutProfileCredentials(
-                    PROFILE_TMDB_SETTINGS_FEATURE,
-                    TmdbSettingsStorage.exportToSyncPayload(),
-                ),
-                mdbListSettings = withoutProfileCredentials(
-                    PROFILE_MDBLIST_SETTINGS_FEATURE,
-                    MdbListSettingsStorage.exportToSyncPayload(),
-                ),
+                // TMDB/MDBList keys sync like any other setting now - see
+                // ProfileSettingsCredentialPolicy.kt for why.
+                tmdbSettings = TmdbSettingsStorage.exportToSyncPayload(),
+                mdbListSettings = MdbListSettingsStorage.exportToSyncPayload(),
                 metaScreenSettingsPayload = MetaScreenSettingsStorage.loadPayload().orEmpty().trim(),
                 collectionMobileSettingsPayload = CollectionMobileSettingsStorage.loadPayload().orEmpty().trim(),
                 continueWatchingSettingsPayload = ContinueWatchingPreferencesStorage.loadPayload().orEmpty().trim(),
@@ -317,22 +313,12 @@ object ProfileSettingsSync {
         )
         DebridSettingsRepository.onProfileChanged()
 
-        TmdbSettingsStorage.replaceFromSyncPayload(
-            preservingLocalProfileCredentials(
-                PROFILE_TMDB_SETTINGS_FEATURE,
-                blob.features.tmdbSettings,
-                TmdbSettingsStorage.exportToSyncPayload(),
-            ),
-        )
+        // TMDB/MDBList keys sync like any other setting now - see
+        // ProfileSettingsCredentialPolicy.kt for why.
+        TmdbSettingsStorage.replaceFromSyncPayload(blob.features.tmdbSettings)
         TmdbSettingsRepository.onProfileChanged()
 
-        MdbListSettingsStorage.replaceFromSyncPayload(
-            preservingLocalProfileCredentials(
-                PROFILE_MDBLIST_SETTINGS_FEATURE,
-                blob.features.mdbListSettings,
-                MdbListSettingsStorage.exportToSyncPayload(),
-            ),
-        )
+        MdbListSettingsStorage.replaceFromSyncPayload(blob.features.mdbListSettings)
         MdbListMetadataService.clearCache()
         MdbListSettingsRepository.onProfileChanged()
 

@@ -7,6 +7,13 @@ internal const val PROFILE_DEBRID_SETTINGS_FEATURE = "debrid_settings"
 internal const val PROFILE_TMDB_SETTINGS_FEATURE = "tmdb_settings"
 internal const val PROFILE_MDBLIST_SETTINGS_FEATURE = "mdblist_settings"
 
+// TMDB and MDBList keys are deliberately NOT in this map (as of the Moseyo
+// cross-device key sync): a personal key typed into Settings on one device is
+// meant to reach every other device on the same profile - the TV already
+// supports this (see profileSettingsSyncFeature-mdblist-settings.js on the
+// TV side). Debrid provider keys and the player feature's own third-party
+// client ids stay device-local on purpose (different accounts/devices may
+// reasonably want different debrid keys), so they keep being stripped here.
 private val profileCredentialKeys = mapOf(
     PROFILE_PLAYER_SETTINGS_FEATURE to setOf(
         "animeskip_client_id",
@@ -17,8 +24,6 @@ private val profileCredentialKeys = mapOf(
         "debrid_premiumize_api_key",
         "debrid_real_debrid_api_key",
     ),
-    PROFILE_TMDB_SETTINGS_FEATURE to setOf("tmdb_api_key"),
-    PROFILE_MDBLIST_SETTINGS_FEATURE to setOf("mdblist_api_key"),
 )
 
 internal fun withoutProfileCredentials(feature: String, payload: JsonObject): JsonObject {
@@ -32,7 +37,6 @@ internal fun preservingLocalProfileCredentials(
     remotePayload: JsonObject,
     localPayload: JsonObject,
 ): JsonObject {
-    if (feature == PROFILE_TMDB_SETTINGS_FEATURE) return withoutProfileCredentials(feature, remotePayload)
     val keys = profileCredentialKeys[feature].orEmpty()
     if (keys.isEmpty()) return remotePayload
     val merged = remotePayload.toMutableMap()
